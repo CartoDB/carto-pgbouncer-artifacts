@@ -34,7 +34,7 @@ jobs:
       run: |
           if [[ "${GITHUB_REF}" == refs/heads/*  ]];then
             BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          elif [[ "${GITHUB_REF}" == ref/tags/*  ]];then
+          elif [[ "${GITHUB_REF}" == refs/tags/*  ]];then
             BRANCH_NAME=${GITHUB_REF#refs/tags/}
           else
             echo 'GITHUB_REF var did not match'
