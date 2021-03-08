@@ -7,7 +7,7 @@ Features:
 
 * Very small, quick to pull (just 15MB)
 * Configurable using environment variables
-* Uses standard Postgres port 5432, to work transparently for applications.
+* Uses non standard Postgres port 6432
 * Includes PostgreSQL client tools such as ``psql``, ``pg_isready``
 * MD5 authentication by default.
 * `/etc/pgbouncer/pgbouncer.ini` and `/etc/pbbouncer/userlist.txt` are auto-created if they don't exist.
