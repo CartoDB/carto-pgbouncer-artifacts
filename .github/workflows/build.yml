@@ -1,0 +1,56 @@
+name: Continous Integration
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - 'v*'
+
+env:
+  GCLOUD_VERSION: '306.0.0'
+  ARTIFACTS_PROJECT_ID: cartodb-on-gcp-main-artifacts
+
+jobs:
+  
+  build-docker:
+    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    name: Build and upload Docker Image
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup gcloud authentication
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        version: ${{env.GCLOUD_VERSION}}
+        service_account_key: ${{ secrets.ARTIFACTS_GCLOUD_ACCOUNT_BASE64 }}
+
+    - name: Configure docker
+      run: |
+         gcloud auth configure-docker
+
+    - name: Build and push image
+      run: |
+          if [[ "${GITHUB_REF}" == refs/heads/*  ]];then
+            BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          elif [[ "${GITHUB_REF}" == ref/tags/*  ]];then
+            BRANCH_NAME=${GITHUB_REF#refs/tags/}
+          else
+            echo 'GITHUB_REF var did not match'
+            exit 1
+          fi
+       
+          BRANCH_NAME=${BRANCH_NAME//\//-}
+          echo "Building pgbouncer image from branch: ${BRANCH_NAME}, commit: ${GITHUB_SHA::7}"
+          docker build -f Dockerfile --label="org.opencontainers.image.created=$(date --rfc-3339=seconds)" --label=org.opencontainers.image.revision=${GITHUB_SHA} -t gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${BRANCH_NAME} -t gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${GITHUB_SHA::7} -t gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${BRANCH_NAME}--${GITHUB_SHA::7} .
+          
+          echo 'Pushing image to the repository...'
+          docker push gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${BRANCH_NAME}
+          docker push gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${GITHUB_SHA::7}
+          docker push gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${BRANCH_NAME}--${GITHUB_SHA::7}
+          if [ "${BRANCH_NAME}" == 'master' ];then
+            echo 'Pushing latest tag to the repository...'
+            docker tag gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:${BRANCH_NAME} gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:latest
+            docker push gcr.io/$ARTIFACTS_PROJECT_ID/pgbouncer:latest
+          fi
